@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MORPHEUZ — Dashboard Operacional</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --surface2:  #1c2128;
+    --border:    #30363d;
+    --text:      #e6edf3;
+    --muted:     #8b949e;
+    --green:     #1d9e75;
+    --accent:    #4b0082;
+    --accent2:   #9c3fff;
+    --red:       #f85149;
+    --yellow:    #d29922;
+    --gold:      #c9a227;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; height: 56px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 100; }
+  .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .logo-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .logo-text .brand { font-size: 13px; font-weight: 700; letter-spacing: 0.02em; }
+  .logo-text .brand span { color: var(--green); }
+  .logo-text .tagline { font-size: 9px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  .header-divider { width: 1px; height: 32px; background: var(--border); margin: 0 8px; }
+  .header-title { flex: 1; }
+  .header-title h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.05em; color: var(--accent2); }
+  .header-title p { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .clock { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .btn-refresh { background: var(--accent); color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background .2s; }
+  .btn-refresh:hover { background: var(--accent2); }
+  .btn-refresh.loading { opacity: .7; cursor: wait; }
+  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; gap: 0; }
+  nav a { color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 500; padding: 14px 16px; border-bottom: 2px solid transparent; transition: color .2s, border-color .2s; cursor: pointer; white-space: nowrap; }
+  nav a:hover { color: var(--text); }
+  nav a.active { color: var(--accent2); border-bottom-color: var(--accent); }
+  .filter-bar { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .filter-group { display: flex; flex-direction: column; gap: 2px; }
+  .filter-group label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .filter-group input { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 6px; font-size: 12px; outline: none; cursor: pointer; }
+  .filter-group input:focus { border-color: var(--accent); }
+  .btn-filter { background: var(--gold); color: #0d1117; border: none; padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; align-self: flex-end; transition: opacity .2s; }
+  .btn-filter:hover { opacity: .85; }
+  .status-bar { padding: 10px 24px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border); background: var(--bg); display: flex; align-items: center; gap: 8px; }
+  .status-bar .highlight { color: var(--accent2); font-weight: 600; }
+  main { padding: 20px 24px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+  .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; position: relative; overflow: hidden; }
+  .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); }
+  .kpi-card.red::before { background: var(--red); }
+  .kpi-card.green::before { background: var(--green); }
+  .kpi-card.yellow::before { background: var(--gold); }
+  .kpi-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+  .kpi-value { font-size: 28px; font-weight: 700; color: var(--text); line-height: 1; }
+  .kpi-value .currency { font-size: 16px; color: var(--muted); margin-right: 2px; }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .kpi-badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; margin-top: 4px; }
+  .badge-red { background: rgba(248,81,73,.15); color: var(--red); }
+  .badge-green { background: rgba(29,158,117,.15); color: var(--green); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-3-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .panel-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .panel-header h3 { font-size: 13px; font-weight: 600; color: var(--text); }
+  .panel-header .badge { font-size: 10px; color: var(--muted); background: var(--surface2); padding: 2px 8px; border-radius: 10px; }
+  .panel-header .live { font-size: 10px; color: var(--green); display: flex; align-items: center; gap: 4px; }
+  .panel-body { padding: 18px; }
+  .chart-wrap { position: relative; height: 240px; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-weight: 600; }
+  tbody tr { border-bottom: 1px solid rgba(48,54,61,.5); transition: background .15s; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr:last-child { border-bottom: none; }
+  td { padding: 10px 12px; font-size: 12px; color: var(--text); }
+  td.muted { color: var(--muted); }
+  .status-pill { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; }
+  .pill-green { background: rgba(29,158,117,.15); color: var(--green); }
+  .pill-red { background: rgba(248,81,73,.15); color: var(--red); }
+  .pill-yellow { background: rgba(210,153,34,.15); color: var(--yellow); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .rank-list { list-style: none; }
+  .rank-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(48,54,61,.4); }
+  .rank-item:last-child { border-bottom: none; }
+  .rank-pos { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .pos-1 { background: rgba(201,162,39,.2); color: var(--gold); }
+  .pos-2 { background: rgba(139,148,158,.2); color: #8b949e; }
+  .pos-3 { background: rgba(180,100,50,.2); color: #b46432; }
+  .pos-n { background: var(--surface2); color: var(--muted); }
+  .rank-name { flex: 1; font-size: 12px; color: var(--text); }
+  .rank-name small { display: block; font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .rank-value { font-size: 13px; font-weight: 700; color: var(--accent2); }
+  .progress-bar { background: var(--surface2); border-radius: 4px; height: 4px; margin-top: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 4px; background: var(--accent); transition: width .5s; }
+  .progress-fill.red { background: var(--red); }
+  .progress-fill.green { background: var(--green); }
+  .geo-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+  .geo-uf { font-size: 13px; font-weight: 700; color: var(--accent2); width: 28px; }
+  .geo-info { flex: 1; }
+  .geo-count { font-size: 12px; color: var(--text); }
+  .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+  footer { text-align: center; padding: 16px 24px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--border); margin-top: 8px; }
+  footer span { color: var(--green); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="#">
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+      <circle cx="16" cy="16" r="14" stroke="#1d3a4a" stroke-width="1.5"/>
+      <circle cx="16" cy="16" r="14" stroke="#1d9e75" stroke-width="1.5" stroke-dasharray="44 44" stroke-dashoffset="11"/>
+      <circle cx="9" cy="20" r="2.5" fill="#1d9e75"/>
+      <circle cx="14" cy="14" r="2.5" fill="#1d9e75"/>
+      <circle cx="20" cy="17" r="2.5" fill="#1d9e75"/>
+      <circle cx="25" cy="11" r="2.5" fill="#1d9e75"/>
+    </svg>
+    <div class="logo-text">
+      <span class="brand">Level<span>Intelig&ecirc;ncia</span></span>
+      <span class="tagline">Transformamos dados em dire&ccedil;&atilde;o</span>
+    </div>
+  </a>
+  <div class="header-divider"></div>
+  <div class="header-title">
+    <h1>MORPHEUZ CLOTHING</h1>
+    <p id="header-sub">Dashboard Operacional &middot; morpheustore.com.br</p>
+  </div>
+  <div class="header-right">
+    <div class="status-dot"></div>
+    <span class="clock" id="clock">--:--:--</span>
+    <button class="btn-refresh" onclick="loadAll()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      Atualizar
+    </button>
+  </div>
+</header>
+
+<nav>
+  <a class="active" onclick="showTab('visao-geral',this)">Vis&atilde;o Geral</a>
+  <a onclick="showTab('produtos',this)">Ranking de Produtos</a>
+  <a onclick="showTab('cancelamentos',this)">Cancelamentos</a>
+  <a onclick="showTab('clientes',this)">Clientes</a>
+  <a onclick="showTab('evolucao',this)">Evolu&ccedil;&atilde;o</a>
+</nav>
+
+<div class="filter-bar">
+  <div class="filter-group"><label>De</label><input type="date" id="f-from" value="2024-10-01"></div>
+  <div class="filter-group"><label>At&eacute;</label><input type="date" id="f-to"></div>
+  <button class="btn-filter" onclick="loadAll()">Filtrar</button>
+</div>
+
+<div class="status-bar">
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1d9e75" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+  <span id="status-text">Carregando dados...</span>
+</div>
+
+<main>
+  <div class="tab-content active" id="tab-visao-geral">
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">Faturamento Total</div><div class="kpi-value"><span class="currency">R$</span><span id="kpi-fat">-</span></div><div class="kpi-sub">pedidos entregues</div></div>
+      <div class="kpi-card yellow"><div class="kpi-label">Ticket M&eacute;dio</div><div class="kpi-value"><span class="currency">R$</span><span id="kpi-ticket">-</span></div><div class="kpi-sub">por pedido entregue</div></div>
+      <div class="kpi-card red"><div class="kpi-label">Taxa de Cancelamento</div><div class="kpi-value" id="kpi-cancel">-</div><div class="kpi-sub" id="kpi-cancel-sub">de - pedidos</div><span class="kpi-badge badge-red" id="kpi-cancel-badge"></span></div>
+      <div class="kpi-card green"><div class="kpi-label">Pedidos Entregues</div><div class="kpi-value" id="kpi-entregues">-</div><div class="kpi-sub" id="kpi-total-sub">de - pedidos totais</div><span class="kpi-badge badge-green" id="kpi-pix">Pix: -%</span></div>
+    </div>
+    <div class="grid-3-1">
+      <div class="panel"><div class="panel-header"><h3>Faturamento por M&ecirc;s</h3><span class="live"><span class="status-dot" style="width:6px;height:6px"></span>dados reais</span></div><div class="panel-body"><div class="chart-wrap"><canvas id="chart-mensal"></canvas></div></div></div>
+      <div class="panel"><div class="panel-header"><h3>Pagamentos</h3></div><div class="panel-body"><div class="chart-wrap" style="height:200px"><canvas id="chart-pag"></canvas></div><div id="pag-details" style="margin-top:12px;font-size:11px;color:var(--muted);text-align:center"></div></div></div>
+    </div>
+    <div class="panel"><div class="panel-header"><h3>Últimos Pedidos</h3><span class="badge" id="badge-total">- pedidos</span></div>
+      <table><thead><tr><th>#</th><th>Data</th><th>Cliente</th><th>Valor</th><th>Frete</th><th>Origem</th><th>Status</th></tr></thead>
+      <tbody id="tabela-pedidos"><tr><td colspan="7" class="empty">Carregando...</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-produtos">
+    <div class="grid-2">
+      <div class="panel"><div class="panel-header"><h3>Top Produtos Vendidos</h3><span class="badge">por quantidade</span></div><div class="panel-body"><ul class="rank-list" id="rank-produtos"></ul></div></div>
+      <div class="panel"><div class="panel-header"><h3>Distribui&ccedil;&atilde;o por Categoria</h3></div><div class="panel-body"><div class="chart-wrap"><canvas id="chart-cat"></canvas></div></div></div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-cancelamentos">
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi-card red"><div class="kpi-label">Total Cancelados</div><div class="kpi-value" id="c-total">-</div><div class="kpi-sub">pedidos cancelados</div></div>
+      <div class="kpi-card red"><div class="kpi-label">Taxa de Cancelamento</div><div class="kpi-value" id="c-taxa">-</div><div class="kpi-sub">meta: abaixo de 5%</div></div>
+      <div class="kpi-card red"><div class="kpi-label">Receita Perdida</div><div class="kpi-value"><span class="currency">R$</span><span id="c-perdido">-</span></div><div class="kpi-sub">estimativa</div></div>
+    </div>
+    <div class="grid-2" style="margin-top:16px">
+      <div class="panel"><div class="panel-header"><h3>Cancelamentos por M&ecirc;s</h3></div><div class="panel-body"><div class="chart-wrap"><canvas id="chart-cancel"></canvas></div></div></div>
+      <div class="panel"><div class="panel-header"><h3>Lista de Pedidos Cancelados</h3></div><table><thead><tr><th>#</th><th>Data</th><th>Cliente</th><th>Valor</th></tr></thead><tbody id="tabela-cancelados"></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-clientes">
+    <div class="grid-2">
+      <div class="panel"><div class="panel-header"><h3>Clientes Recentes</h3><span class="badge" id="badge-clientes">- clientes</span></div><table><thead><tr><th>Nome</th><th>Estado</th><th>Cadastro</th></tr></thead><tbody id="tabela-clientes"></tbody></table></div>
+      <div class="panel"><div class="panel-header"><h3>Distribui&ccedil;&atilde;o Geogr&aacute;fica</h3></div><div class="panel-body" id="geo-list"></div></div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-evolucao">
+    <div class="panel"><div class="panel-header"><h3>Evolu&ccedil;&atilde;o Hist&oacute;rica - Faturamento e Pedidos</h3><span class="live"><span class="status-dot" style="width:6px;height:6px"></span>dados reais</span></div><div class="panel-body"><div class="chart-wrap" style="height:320px"><canvas id="chart-evolucao"></canvas></div></div></div>
+    <div class="grid-2" style="margin-top:16px">
+      <div class="panel"><div class="panel-header"><h3>Origens de Tr&aacute;fego</h3></div><div class="panel-body" id="origens-list"></div></div>
+      <div class="panel"><div class="panel-header"><h3>Parcelamentos</h3></div><div class="panel-body"><div class="chart-wrap" style="height:180px"><canvas id="chart-parc"></canvas></div></div></div>
+    </div>
+  </div>
+</main>
+
+<footer>Dashboard operacional da <span>Morpheuz Clothing</span> &middot; Dados ao vivo via API Yampi &middot; Desenvolvido por <span>Level Intelig&ecirc;ncia</span></footer>
+
+<script>
+const BASE='https://api.dooki.com.br/v2/morpheuz2';
+const HEADERS={'User-Token':'o3yk2vxUu13pm83eFScaTeC8CeIm0h3dJEwdvqz7','User-Secret-Key':'sk_ZIDNCt7GLyXqcq9onnnGgqRvplcBLKfPTK9cu','Accept':'application/json'};
+const brl=v=>'R$ '+parseFloat(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const brlNum=v=>parseFloat(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const api=path=>fetch(BASE+path,{headers:HEADERS}).then(r=>r.json());
+let charts={};
+function killChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function updateClock(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('pt-BR');}
+setInterval(updateClock,1000);updateClock();
+function showTab(id,el){document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');if(el)el.classList.add('active');}
+(function(){document.getElementById('f-to').value=new Date().toISOString().split('T')[0];})();
+async function loadAll(){
+  const btn=document.querySelector('.btn-refresh');
+  btn.classList.add('loading');btn.textContent='...';
+  document.getElementById('status-text').textContent='Atualizando dados...';
+  try{
+    const from=document.getElementById('f-from').value;
+    const to=document.getElementById('f-to').value;
+    const [oR,cR,pR]=await Promise.all([api('/orders?include=items,transactions&limit=200&page=1&created_at[from]='+from+'&created_at[to]='+to),api('/customers?limit=100&page=1'),api('/catalog/products?limit=200&page=1')]);
+    const orders=oR.data||[],customers=cR.data||[];
+    const totalC=(cR.meta||{}).pagination?cR.meta.pagination.total:customers.length;
+    processOrders(orders,from,to);
+    processProducts(orders,pR.data||[]);
+    processCustomers(customers,totalC);
+    document.getElementById('header-sub').textContent='Dashboard Operacional - '+from.split('-').reverse().join('/')+' a '+to.split('-').reverse().join('/')+' - '+orders.length+' pedidos';
+    document.getElementById('status-text').innerHTML='<span class="highlight">'+orders.length+' pedidos</span> carregados';
+  }catch(e){document.getElementById('status-text').textContent='Erro ao carregar: '+e.message;}
+  btn.classList.remove('loading');
+  btn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Atualizar';
+}
+function processOrders(orders,from,to){
+  let fat=0,frete=0,entregues=0,cancelados=0,receitaPerdida=0,pix=0,cartao=0,boleto=0,parc={};
+  const porMes={},estados={},origens={},cancelList=[];
+  orders.forEach(o=>{
+    const status=(o.status||{}).data?o.status.data.name:'';
+    const valor=parseFloat(o.buyer_value_total||0);
+    const mes=(o.created_at.date||'').substring(0,7);
+    if(!porMes[mes])porMes[mes]={fat:0,count:0,cancel:0};
+    porMes[mes].count++;
+    if(status==='Cancelado'){cancelados++;receitaPerdida+=valor;porMes[mes].cancel++;cancelList.push(o);}
+    else{fat+=valor;frete+=parseFloat(o.value_shipment||0);entregues++;porMes[mes].fat+=valor;}
+    const trans=(o.transactions||{}).data||[];
+    if(trans.length>0){const t=trans[0];const isPix=t.metadata&&t.metadata.data&&t.metadata.data.pix_qr_code;const isBol=!!t.billet_url;if(isPix)pix++;else if(isBol)boleto++;else cartao++;const inst=''+(t.installments||1)+'x';parc[inst]=(parc[inst]||0)+1;}
+    const uf=((o.shipping_address||{}).data||{}).uf;if(uf&&uf!=='**')estados[uf]=(estados[uf]||0)+1;
+    const orig=o.utm_source||o.utm_medium||'Direto';origens[orig]=(origens[orig]||0)+1;
+  });
+  const total=orders.length;
+  const taxaCancel=total>0?(cancelados/total*100):0;
+  const ticket=entregues>0?fat/entregues:0;
+  const pixPct=total>0?Math.round(pix/total*100):0;
+  document.getElementById('kpi-fat').textContent=brlNum(fat);
+  document.getElementById('kpi-ticket').textContent=brlNum(ticket);
+  document.getElementById('kpi-cancel').textContent=taxaCancel.toFixed(1)+'%';
+  document.getElementById('kpi-cancel-sub').textContent='de '+total+' pedidos';
+  document.getElementById('kpi-cancel-badge').textContent=taxaCancel>20?'CRITICO':taxaCancel>10?'ATENCAO':'OK';
+  document.getElementById('kpi-entregues').textContent=entregues;
+  document.getElementById('kpi-total-sub').textContent='de '+total+' pedidos totais';
+  document.getElementById('kpi-pix').textContent='Pix: '+pixPct+'%';
+  document.getElementById('badge-total').textContent=total+' pedidos';
+  document.getElementById('c-total').textContent=cancelados;
+  document.getElementById('c-taxa').textContent=taxaCancel.toFixed(1)+'%';
+  document.getElementById('c-perdido').textContent=brlNum(receitaPerdida);
+  const meses=Object.keys(porMes).sort();
+  const fatMes=meses.map(m=>porMes[m].fat);
+  const cancelMes=meses.map(m=>porMes[m].cancel);
+  const nms=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const mesesLabel=meses.map(m=>{const[y,mo]=m.split('-');return nms[parseInt(mo)-1]+'/'+y.substring(2);});
+  killChart('mensal');
+  charts['mensal']=new Chart(document.getElementById('chart-mensal'),{type:'bar',data:{labels:mesesLabel,datasets:[{label:'Faturamento',data:fatMes,backgroundColor:'rgba(75,0,130,.7)',borderColor:'#4b0082',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>brl(ctx.parsed.y)}}},scales:{x:{ticks:{color:'#8b949e',font:{size:10}},grid:{color:'rgba(48,54,61,.5)'}},y:{ticks:{color:'#8b949e',font:{size:10},callback:v=>'R$'+Math.round(v/1000)+'k'},grid:{color:'rgba(48,54,61,.5)'}}}}});
+  killChart('pag');
+  charts['pag']=new Chart(document.getElementById('chart-pag'),{type:'doughnut',data:{labels:['Pix','Cartao','Boleto'],datasets:[{data:[pix,cartao,boleto],backgroundColor:['#1d9e75','#4b0082','#c9a227'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'#8b949e',font:{size:10},padding:10}}}}});
+  document.getElementById('pag-details').textContent=pixPct+'% Pix - '+(Math.round(cartao/(total||1)*100))+'% Cartao';
+  killChart('cancel');
+  charts['cancel']=new Chart(document.getElementById('chart-cancel'),{type:'bar',data:{labels:mesesLabel,datasets:[{label:'Cancelamentos',data:cancelMes,backgroundColor:'rgba(248,81,73,.6)',borderColor:'#f85149',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scissors:{x:{ticks:{color:'#8b949e'},grid:{color:'rgba(48,54,61,.5)'}},y:{ticks:{color:'#8b949e',stepSize:1},grid:{color:'rgba(48,54,61,.5)'}}}}});
+  document.getElementById('tabela-cancelados').innerHTML=cancelList.slice(0,15).map(o=>{const d=(o.created_at.date||'').substring(0,10).split('-').reverse().join('/');const n=((o.customer||{}).data||{}).name||'-';return'<tr><td class="muted">#'+o.number+'</td><td class="muted">'+d+'</td><td>'+n.substring(0,25)+'</td><td>'+brl(o.buyer_value_total)+'</td></tr>';}).join('')||'<tr><td colspan="4" class="empty">Nenhum cancelamento no periodo</td></tr>';
+  document.getElementById('tabela-pedidos').innerHTML=orders.slice(0,20).map(o=>{const d=(o.created_at.date||'').substring(0,10).split('-').reverse().join('/');const n=((o.customer||{}).data||{}).name||'-';const st=(o.status||{}).data?o.status.data.name:'-';const pc=st==='Entregue'?'pill-green':st==='Cancelado'?'pill-red':'pill-yellow';const orig=o.utm_source||o.utm_medium||'-';return'<tr><td class="muted">#'+o.number+'</td><td class="muted">'+d+'</td><td>'+n.substring(0,28)+'</td><td><strong>'+brl(o.buyer_value_total)+'</strong></td><td class="muted">'+brl(o.value_shipment)+'</td><td class="muted">'+orig+'</td><td><span class="status-pill '+pc+'">'+st+'</span></td></tr>';}).join('')||'<tr><td colspan="7" class="empty">Nenhum pedido no periodo</td></tr>';
+  killChart('evolucao');
+  charts['evolucao']=new Chart(document.getElementById('chart-evolucao'),{type:'bar',data:{labels:mesesLabel,datasets:[{label:'Faturamento',data:fatMes,backgroundColor:'rgba(75,0,130,.7)',borderRadius:4,yAxisID:'y'},{label:'Pedidos',data:meses.map(m=>porMes[m].count),type:'line',borderColor:'#1d9e75',backgroundColor:'rgba(29,158,117,.1)',tension:.4,yAxisID:'y1',pointRadius:4,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b949e',font:{size:11}}},tooltip:{callbacks:{label:ctx=>ctx.datasetIndex===0?brl(ctx.parsed.y):ctx.parsed.y+' pedidos'}}},scales:{x:{ticks:{color:'#8b949e'},grid:{color:'rgba(48,54,61,.4)'}},y:{position:'left',ticks:{color:'#8b949e',callback:v=>'R$'+Math.round(v/1000)+'k'},grid:{color:'rgba(48,54,61,.4)'}},y1:{position:'right',ticks:{color:'#1d9e75',stepSize:1},grid:{display:false}}}}});
+  const os2=Object.entries(origens).sort((a,b)=>b[1]-a[1]);const mx=os2[0]?.[1]||1;
+  document.getElementById('origens-list').innerHTML=os2.map(([o,c])=>'<div class="geo-item"><div style="width:80px;font-size:12px;color:var(--text)">'+o+'</div><div style="flex:1"><div class="progress-bar"><div class="progress-fill" style="width:'+Math.round(c/mx*100)+'%"></div></div></div><div style="font-size:12px;color:var(--accent2);font-weight:700;width:30px;text-align:right">'+c+'</div><div class="muted" style="font-size:10px;width:36px;text-align:right">'+Math.round(c/total*100)+'%</div></div>').join('');
+  killChart('parc');
+  const pk=Object.keys(parc).sort((a,b)=>parseInt(a)-parseInt(b));
+  charts['parc']=new Chart(document.getElementById('chart-parc'),{type:'bar',data:{labels:pk,datasets:[{data:pk.map(k=>parc[k]),backgroundColor:'rgba(201,162,39,.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8b949e'}},y:{ticks:{color:'#8b949e',stepSize:1},grid:{color:'rgba(48,54,61,.4)'}}}}});
+  const es=Object.entries(estados).sort((a,b)=>b[1]-a[1]);const gm=es[0]?.[1]||1;
+  document.getElementById('geo-list').innerHTML=es.map(([uf,c])=>'<div class="geo-item"><div class="geo-uf">'+uf+'</div><div class="geo-info"><div class="geo-count">'+c+' pedido'+(c>1?'s':'')+'</div><div class="progress-bar"><div class="progress-fill" style="width:'+Math.round(c/gm*100)+'%"></div></div></div><div style="font-size:11px;color:var(--muted);text-align:right">'+Math.round(c/total*100)+'%</div></div>').join('');
+}
+function processProducts(orders,allProducts){
+  const p={};
+  orders.forEach(o=>{if((o.status||{}).data&&o.status.data.name==='Cancelado')return;((o.items||{}).data||[]).forEach(item=>{const t=((item.sku||{}).data||{}).title||'Produto';const b=t.replace(/ (PP|P|M|G|GG|XG|XGG)( PRETO| BRANCO| OFF WHITE| ROSA| AZUL| VERMELHO)?$/i,'').trim();const q=parseInt(item.quantity||1);const v=parseFloat(item.price||0)*q;if(!p[b])p[b]={qty:0,total:0};p[b].qty+=q;p[b].total+=v;});});
+  const top=Object.entries(p).sort((a,b)=>b[1].qty-a[1].qty).slice(0,10);
+  const mq=top[0]?.[1].qty||1;
+  document.getElementById('rank-produtos').innerHTML=top.map(([n,v],i)=>'<li class="rank-item"><div class="rank-pos '+(i<3?'pos-'+(i+1):'pos-n')+'">'+（i+1）+'</div><div class="rank-name">'+n.substring(0,50)+'<small>'+v.qty+' und - '+brl(v.total)+'</small><div class="progress-bar" style="margin-top:4px"><div class="progress-fill" style="width:'+Math.round(v.qty/mq*100)+'%"></div></div></div><div class="rank-value">'+v.qty+'</div></li>').join('')||'<li class="empty">Sem dados</li>';
+  const cats={};
+  allProducts.forEach(p2=>{const c=((p2.category||{}).data||{}).name||'Sem categoria';cats[c]=(cats[c]||0)+1;});
+  const ce=Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  killChart('cat');
+  charts['cat']=new Chart(document.getElementById('chart-cat'),{type:'doughnut',data:{labels:ce.map(([k])=>k),datasets:[{data:ce.map(([,v])=>v),backgroundColor:['#4b0082','#1d9e75','#c9a227','#f85149','#3b82f6','#ec4899','#f97316','#8b5cf6'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'right',labels:{color:'#8b949e',font:{size:10},padding:8,boxWidth:12}}}}});
+}
+function processCustomers(customers,total){
+  document.getElementById('badge-clientes').textContent=total+' clientes';
+  document.getElementById('tabela-clientes').innerHTML=customers.slice(0,20).map(c=>{const d=c.created_at?(c.created_at.date||'').substring(0,10).split('-').reverse().join('/'):'-';return'<tr><td>'+(c.name||'-').substring(0,28)+'</td><td class="muted">'+(c.state_id||'-')+'</td><td class="muted">'+d+'</td></tr>';}).join('')||'<tr><td colspan="3" class="empty">-</td></tr>';
+}
+loadAll();
+</script>
+</body>
+</html>
